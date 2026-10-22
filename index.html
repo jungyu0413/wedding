@@ -130,11 +130,21 @@
   @media (hover: hover) { .btn:hover { border-color: var(--ink); } }
 
   /* Gallery */
-  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 44px; }
-  .gi { display: block; overflow: hidden; background: var(--bg-2); }
-  .gi img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; transition: transform 1.2s cubic-bezier(.2, .7, .2, 1), opacity .4s; }
-  .gi.land img { object-position: 28% 50%; }
-  @media (hover: hover) { .gi:hover img { transform: scale(1.03); } }
+  .tabs { display: flex; justify-content: center; gap: 30px; margin-top: 36px; }
+  .tabs button { font-family: var(--sans); font-size: 10px; font-weight: 500; letter-spacing: .3em; text-transform: uppercase; color: var(--ink-3); padding: 6px 0 6px .3em; border-bottom: 1px solid transparent; transition: color .3s, border-color .3s; }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .car { display: flex; gap: 10px; margin: 28px calc(var(--gutter) * -1) 0; padding: 0 var(--gutter); scroll-padding: 0 var(--gutter); overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; transition: opacity .3s ease; }
+  .car::-webkit-scrollbar { display: none; }
+  .car.fade { opacity: 0; }
+  .slide { flex: 0 0 84%; scroll-snap-align: start; background: var(--bg-2); }
+  .slide img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 25%; }
+  .slide.land img { object-position: 28% 50%; }
+  .car-foot { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .car-count { min-width: 50px; text-align: left; font-family: var(--en); font-size: 15px; letter-spacing: .1em; font-variant-numeric: lining-nums tabular-nums; }
+  .car-bar { position: relative; flex: 1; height: 1px; background: var(--line); overflow: hidden; }
+  .car-bar i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--ink); transition: left .35s ease, width .35s ease; }
+  .car-btn { width: 30px; height: 32px; font-family: var(--en); font-size: 26px; font-weight: 300; line-height: 1; color: var(--ink-2); }
+  .car-btn:disabled { opacity: .25; cursor: default; }
 
   .lb { position: fixed; inset: 0; z-index: 200; background: rgba(22, 21, 19, .97); color: #F3F0EA; display: flex; flex-direction: column; }
   .lb[hidden] { display: none; }
@@ -277,13 +287,18 @@
   <section class="sec">
     <p class="label reveal">Gallery</p>
     <h2 class="title reveal">갤러리</h2>
-    <div class="gallery reveal">
-      <button class="gi" data-i="0" aria-label="사진 1 크게 보기"><img src="img/g1_t.jpg" alt="" loading="lazy"></button>
-      <button class="gi" data-i="1" aria-label="사진 2 크게 보기"><img src="img/g2_t.jpg" alt="" loading="lazy"></button>
-      <button class="gi" data-i="2" aria-label="사진 3 크게 보기"><img src="img/g3_t.jpg" alt="" loading="lazy"></button>
-      <button class="gi" data-i="3" aria-label="사진 4 크게 보기"><img src="img/g4_t.jpg" alt="" loading="lazy"></button>
-      <button class="gi" data-i="4" aria-label="사진 5 크게 보기"><img src="img/g5_t.jpg" alt="" loading="lazy"></button>
-      <button class="gi land" data-i="5" aria-label="사진 6 크게 보기"><img src="img/g6_t.jpg" alt="" loading="lazy"></button>
+    <div class="tabs reveal" role="tablist" aria-label="갤러리">
+      <button type="button" role="tab" aria-selected="true" data-set="wedding">Wedding</button>
+      <button type="button" role="tab" aria-selected="false" data-set="proposal">Proposal</button>
+    </div>
+    <div class="reveal">
+      <div class="car" id="car"></div>
+      <div class="car-foot">
+        <span class="car-count" id="car-count">1 / 7</span>
+        <span class="car-bar" aria-hidden="true"><i id="car-bar"></i></span>
+        <button type="button" class="car-btn" id="car-prev" aria-label="이전 사진">‹</button>
+        <button type="button" class="car-btn" id="car-next" aria-label="다음 사진">›</button>
+      </div>
     </div>
   </section>
 
@@ -453,23 +468,66 @@
     ? `준규, 새빛의 결혼식까지 <b>${dday}일</b> 남았습니다`
     : dday === 0 ? '<b>오늘</b>, 저희 결혼합니다' : `준규, 새빛이 부부가 된 지 <b>${-dday}일</b>`;
 
-  // Lightbox
-  const photos = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6'];
+  // Gallery: one carousel per set, tap for the fullscreen viewer
+  const sets = {
+    wedding: ['g1', 'g2', 'g7', 'g5', 'g3', 'g4', 'g6'],
+    proposal: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'],
+  };
+  const landscape = new Set(['g6']);
+  let photos = sets.wedding;
+
   const lb = $('#lb'), track = $('#lb-track'), count = $('#lb-count');
-  track.innerHTML = photos.map((p, i) => `<figure><img src="img/${p}.jpg" alt="웨딩 사진 ${i + 1}" loading="lazy"></figure>`).join('');
   const current = () => Math.round(track.scrollLeft / track.clientWidth);
   const label = (i) => `${i + 1} / ${photos.length}`;
   const go = (i) => track.scrollTo({ left: Math.max(0, Math.min(photos.length - 1, i)) * track.clientWidth, behavior: 'smooth' });
   const open = (i) => {
+    track.innerHTML = photos.map((p, n) => `<figure><img src="img/${p}.jpg" alt="사진 ${n + 1}" loading="lazy"></figure>`).join('');
     lb.hidden = false;
     document.body.style.overflow = 'hidden';
     track.scrollTo({ left: i * track.clientWidth, behavior: 'instant' });
     count.textContent = label(i);
     $('#lb-close').focus();
   };
-  const close = () => { lb.hidden = true; document.body.style.overflow = ''; };
-  $$('.gi').forEach((b) => b.addEventListener('click', () => open(+b.dataset.i)));
   track.addEventListener('scroll', () => { count.textContent = label(current()); }, { passive: true });
+
+  const car = $('#car'), carCount = $('#car-count'), carBar = $('#car-bar');
+  const carStep = () => (car.firstElementChild ? car.firstElementChild.offsetWidth : 1) + (parseFloat(getComputedStyle(car).columnGap) || 0);
+  const carIndex = () => (car.scrollLeft >= car.scrollWidth - car.clientWidth - 2
+    ? photos.length - 1
+    : Math.round(car.scrollLeft / carStep()));
+  const carGo = (i, behavior = 'smooth') => car.scrollTo({ left: Math.max(0, Math.min(photos.length - 1, i)) * carStep(), behavior });
+  const updateCar = () => {
+    const i = carIndex();
+    carCount.textContent = label(i);
+    carBar.style.width = `${100 / photos.length}%`;
+    carBar.style.left = `${(i * 100) / photos.length}%`;
+    $('#car-prev').disabled = i === 0;
+    $('#car-next').disabled = i === photos.length - 1;
+  };
+  const renderCar = (name) => {
+    photos = sets[name];
+    car.innerHTML = photos.map((p, i) => `<button type="button" class="slide${landscape.has(p) ? ' land' : ''}" data-i="${i}" aria-label="사진 ${i + 1} 크게 보기"><img src="img/${p}.jpg" alt="" loading="${i < 2 ? 'eager' : 'lazy'}"></button>`).join('');
+    car.scrollLeft = 0;
+    updateCar();
+  };
+  car.addEventListener('scroll', updateCar, { passive: true });
+  car.addEventListener('click', (e) => { const s = e.target.closest('.slide'); if (s) open(+s.dataset.i); });
+  $('#car-prev').addEventListener('click', () => carGo(carIndex() - 1));
+  $('#car-next').addEventListener('click', () => carGo(carIndex() + 1));
+  $$('.tabs button').forEach((t) => t.addEventListener('click', () => {
+    if (t.getAttribute('aria-selected') === 'true') return;
+    $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b === t)));
+    car.classList.add('fade');
+    setTimeout(() => { renderCar(t.dataset.set); car.classList.remove('fade'); }, 300);
+  }));
+  renderCar('wedding');
+
+  const close = () => {
+    const i = current();
+    lb.hidden = true;
+    document.body.style.overflow = '';
+    carGo(i, 'instant');
+  };
   $('#lb-close').addEventListener('click', close);
   $('#lb-prev').addEventListener('click', () => go(current() - 1));
   $('#lb-next').addEventListener('click', () => go(current() + 1));
