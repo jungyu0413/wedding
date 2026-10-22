@@ -5,7 +5,7 @@
 👉 https://jungyu0413.github.io/wedding/
 
 - `index.html` — 청첩장 페이지 (HTML/CSS/JS 한 파일)
-- `img/` — 웨딩 사진 `g1`–`g7`, 프로포즈 사진 `p1`–`p7`, 공유 미리보기 `og.jpg`, 지도 `map.jpg`
+- `img/` — 웨딩 사진 `g1`–`g6`, 프로포즈 사진 `p1`–`p7`, 공유 미리보기 `og.jpg`, 지도 `map.jpg`
 - `wedding.ics` — 캘린더 저장 파일
 
 Map data © OpenStreetMap contributors.
